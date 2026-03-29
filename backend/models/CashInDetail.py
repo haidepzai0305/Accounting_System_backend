@@ -2,6 +2,7 @@ from datetime import datetime
 
 from backend.extension import db
 from backend.enums.TransactionStatus import TransactionStatusEnum
+from backend.utils.transaction_status_type import TransactionStatusType
 
 
 class CashInDetail(db.Model):
@@ -16,7 +17,11 @@ class CashInDetail(db.Model):
     description = db.Column(db.String(500), nullable=False)
     account_debit = db.Column(db.String(20), db.ForeignKey('chart_of_accounts.code'), nullable=False)
     account_credit = db.Column(db.String(20), db.ForeignKey('chart_of_accounts.code'), nullable=False)
-    status = db.Column(db.Enum(TransactionStatusEnum), default=TransactionStatusEnum.PENDING)
+    status = db.Column(
+        TransactionStatusType(),
+        nullable=False,
+        default=TransactionStatusEnum.PENDING,
+    )
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_at = db.Column(db.DateTime)
     rejection_reason = db.Column(db.String(500))

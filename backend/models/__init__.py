@@ -6,6 +6,8 @@ from .CashInDetail import CashInDetail
 from .CashOutDetail import CashOutDetail
 from .ChartOfAccounts import ChartOfAccounts
 from .JournalEntry import JournalEntry
+from .Employee import Employee
+from .Payroll import Payroll
 from .User import User
 
 __all__ = [
@@ -15,7 +17,9 @@ __all__ = [
     "CashInDetail",
     "CashOutDetail",
     "ChartOfAccounts",
+    "Employee",
     "JournalEntry",
+    "Payroll",
     "User",
     "TransactionStatusEnum"
 ]

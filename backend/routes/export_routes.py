@@ -2,7 +2,7 @@ from flask import Blueprint, send_file, request, jsonify
 from flask_jwt_extended import jwt_required
 from datetime import datetime
 
-from backend.models import CashInDetail, CashOutDetail, db
+from backend.models import CashInDetail, CashOutDetail, db, User, JournalEntry, ChartOfAccounts
 from backend.models.Employee import Employee
 from backend.models.Payroll import Payroll
 from backend.enums.TransactionStatus import TransactionStatusEnum
@@ -259,6 +259,175 @@ def export_payroll():
         period   = f"T{month:02d}-{year}" if month and year else "all"
         stream   = build_excel(f"Bảng lương {period}", headers, rows)
         filename = f"payroll_{period}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return send_file(
+            stream,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# =============================
+# EXPORT USERS
+# =============================
+@export_bp.route("/users", methods=["GET"])
+@jwt_required()
+def export_users():
+    try:
+        role   = request.args.get("role")
+        status = request.args.get("status")
+
+        query = User.query
+
+        if role:
+            from backend.enums.role_users import RoleEnum
+            try:
+                # Role in RoleEnum is defined with lowercase keys? Check RoleEnum
+                query = query.filter_by(role=RoleEnum[role.lower()])
+            except (KeyError, ValueError):
+                pass
+
+        if status:
+            query = query.filter_by(status=status.lower())
+
+        records = query.order_by(User.full_name.asc()).all()
+
+        headers = [
+            "ID", "Tên đăng nhập", "Email", "Họ và tên",
+            "Vai trò", "Phòng ban", "Số điện thoại",
+            "Trạng thái", "Ngày tạo", "Đăng nhập cuối"
+        ]
+
+        rows = [
+            [
+                r.id,
+                r.username,
+                r.email,
+                r.full_name,
+                r.role.value if r.role else "",
+                r.department or "",
+                r.phone or "",
+                r.status,
+                r.created_at.strftime("%d/%m/%Y %H:%M") if r.created_at else "",
+                r.last_login_at.strftime("%d/%m/%Y %H:%M") if r.last_login_at else ""
+            ]
+            for r in records
+        ]
+
+        stream   = build_excel("Danh sách Người dùng", headers, rows)
+        filename = f"users_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return send_file(
+            stream,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# =============================
+# EXPORT JOURNAL
+# =============================
+@export_bp.route("/journal", methods=["GET"])
+@jwt_required()
+def export_journal():
+    try:
+        status     = request.args.get("status")
+        start_date = request.args.get("start_date")
+        end_date   = request.args.get("end_date")
+
+        query = JournalEntry.query
+
+        if status:
+            query = query.filter_by(status=status.lower())
+
+        if start_date:
+            query = query.filter(JournalEntry.date >= datetime.strptime(start_date, "%Y-%m-%d").date())
+
+        if end_date:
+            query = query.filter(JournalEntry.date <= datetime.strptime(end_date, "%Y-%m-%d").date())
+
+        records = query.order_by(JournalEntry.date.desc(), JournalEntry.created_at.desc()).all()
+
+        headers = [
+            "ID", "Mã Nhật ký", "Mã Giao dịch", "Kỳ kế toán",
+            "Ngày", "Mô tả", "Tài khoản Nợ", "Tài khoản Có",
+            "Số tiền (VND)", "Trạng thái", "Ngày tạo"
+        ]
+
+        rows = [
+            [
+                r.id,
+                r.journal_id,
+                r.transaction_id or "",
+                r.period or "",
+                r.date.strftime("%d/%m/%Y"),
+                r.description,
+                r.account_debit,
+                r.account_credit,
+                r.amount,
+                r.status,
+                r.created_at.strftime("%d/%m/%Y %H:%M") if r.created_at else ""
+            ]
+            for r in records
+        ]
+
+        stream   = build_excel("Sổ nhật ký chung", headers, rows)
+        filename = f"journal_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+
+        return send_file(
+            stream,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+# =============================
+# EXPORT ACCOUNTS
+# =============================
+@export_bp.route("/accounts", methods=["GET"])
+@jwt_required()
+def export_accounts():
+    try:
+        category = request.args.get("category")
+        query = ChartOfAccounts.query
+
+        if category:
+            query = query.filter_by(category=category.lower())
+
+        records = query.order_by(ChartOfAccounts.code.asc()).all()
+
+        headers = [
+            "Mã tài khoản", "Tên tài khoản", "Loại",
+            "Danh mục", "Số dư (VND)", "Trạng thái", "Mô tả"
+        ]
+
+        rows = [
+            [
+                r.code,
+                r.name,
+                r.type.value if r.type else "",
+                r.category or "",
+                r.balance,
+                "Hoạt động" if r.is_active else "Ngừng",
+                r.description or ""
+            ]
+            for r in records
+        ]
+
+        stream   = build_excel("Hệ thống tài khoản", headers, rows)
+        filename = f"chart_of_accounts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
 
         return send_file(
             stream,

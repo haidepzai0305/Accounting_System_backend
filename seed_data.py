@@ -132,14 +132,14 @@ def run_seed():
         # ---------------------------------------------------------------
         print("  Seeding cash_in_detail...")
         cash_in_rows = [
-            ("CI-2026-001", "2026-01-05", 50000000,  "Hoc phi", "Thu hoc phi ky 1 2025-2026",   "112","511","approved", manager_id,"2026-01-05 10:30:00", None,  ketoan_id),
-            ("CI-2026-002", "2026-01-15", 25000000,  "Quy",     "Nhan ho tro tu quy phuc loi",  "112","515","approved", manager_id,"2026-01-15 14:00:00", None,  ketoan_id),
-            ("CI-2026-003", "2026-02-03", 80000000,  "Hoc phi", "Thu hoc phi ky 2 2025-2026",   "112","511","approved", manager_id,"2026-02-03 09:00:00", None,  ketoan_id),
-            ("CI-2026-004", "2026-02-20", 10000000,  "Khac",    "Ban thanh ly tai san cu",       "111","511","approved", manager_id,"2026-02-20 11:00:00", None,  ketoan_id),
-            ("CI-2026-005", "2026-03-01", 60000000,  "Hoc phi", "Thu hoc phi thang 3",           "112","511","pending",  None,      None,                  None,  ketoan_id),
-            ("CI-2026-006", "2026-03-10", 15000000,  "Quy",     "Nhan tai tro tu doi tac",       "112","515","pending",  None,      None,                  None,  ketoan_id),
-            ("CI-2025-012", "2025-12-05", 45000000,  "Hoc phi", "Thu hoc phi thang 12-2025",     "112","511","approved", manager_id,"2025-12-05 10:00:00", None,  ketoan_id),
-            ("CI-2025-011", "2025-11-10", 30000000,  "Khac",    "Thu hoi cong no khach hang",    "112","131","rejected", None,      None,  "Chung tu khong hop le", ketoan_id),
+            ("CI-2026-001", "2026-01-05", 50000000,  "Hoc phi", "Thu hoc phi ky 1 2025-2026",   "112","511","APPROVED", manager_id,"2026-01-05 10:30:00", None,  ketoan_id),
+            ("CI-2026-002", "2026-01-15", 25000000,  "Quy",     "Nhan ho tro tu quy phuc loi",  "112","515","APPROVED", manager_id,"2026-01-15 14:00:00", None,  ketoan_id),
+            ("CI-2026-003", "2026-02-03", 80000000,  "Hoc phi", "Thu hoc phi ky 2 2025-2026",   "112","511","APPROVED", manager_id,"2026-02-03 09:00:00", None,  ketoan_id),
+            ("CI-2026-004", "2026-02-20", 10000000,  "Khac",    "Ban thanh ly tai san cu",       "111","511","APPROVED", manager_id,"2026-02-20 11:00:00", None,  ketoan_id),
+            ("CI-2026-005", "2026-03-01", 60000000,  "Hoc phi", "Thu hoc phi thang 3",           "112","511","PENDING",  None,      None,                  None,  ketoan_id),
+            ("CI-2026-006", "2026-03-10", 15000000,  "Quy",     "Nhan tai tro tu doi tac",       "112","515","PENDING",  None,      None,                  None,  ketoan_id),
+            ("CI-2025-012", "2025-12-05", 45000000,  "Hoc phi", "Thu hoc phi thang 12-2025",     "112","511","APPROVED", manager_id,"2025-12-05 10:00:00", None,  ketoan_id),
+            ("CI-2025-011", "2025-11-10", 30000000,  "Khac",    "Thu hoi cong no khach hang",    "112","131","REJECTED", None,      None,  "Chung tu khong hop le", ketoan_id),
         ]
         count = 0
         for txn_id, dt, amt, src, desc, dr, cr, status, appr_by, appr_at, rej, cby in cash_in_rows:
@@ -163,14 +163,14 @@ def run_seed():
         print("  Seeding cash_out_detail...")
         bank_id = db.session.execute(db.text("SELECT id FROM bank_accounts WHERE bank_name='Vietcombank'")).scalar()
         cash_out_rows = [
-            ("CO-2026-001","2026-01-31",120000000,"Luong",   "Tra luong thang 01-2026",         bank_id,"334","112","approved",manager_id,"2026-01-31 15:00:00",ketoan_id),
-            ("CO-2026-002","2026-02-05",8500000,  "Bao tri", "Bao tri dieu hoa van phong",      bank_id,"627","112","approved",manager_id,"2026-02-05 10:00:00",ketoan_id),
-            ("CO-2026-003","2026-02-28",120000000,"Luong",   "Tra luong thang 02-2026",         bank_id,"334","112","approved",manager_id,"2026-02-28 15:00:00",ketoan_id),
-            ("CO-2026-004","2026-03-02",15000000, "Mua sam", "Mua thiet bi van phong moi",      bank_id,"641","112","approved",manager_id,"2026-03-02 09:30:00",ketoan_id),
-            ("CO-2026-005","2026-03-10",5000000,  "Bao tri", "Sua chua may tinh nhan vien",     bank_id,"627","111","pending", None,     None,                  ketoan_id),
-            ("CO-2026-006","2026-03-15",120000000,"Luong",   "Tra luong thang 03-2026",         bank_id,"334","112","pending", None,     None,                  ketoan_id),
-            ("CO-2025-012","2025-12-31",120000000,"Luong",   "Tra luong thang 12-2025",         bank_id,"334","112","approved",manager_id,"2025-12-31 15:00:00",ketoan_id),
-            ("CO-2025-011","2025-11-20",20000000, "Mua sam", "Mua phan mem ban quyen",          bank_id,"642","112","approved",manager_id,"2025-11-20 11:00:00",ketoan_id),
+            ("CO-2026-001","2026-01-31",120000000,"Luong",   "Tra luong thang 01-2026",         bank_id,"334","112","APPROVED",manager_id,"2026-01-31 15:00:00",ketoan_id),
+            ("CO-2026-002","2026-02-05",8500000,  "Bao tri", "Bao tri dieu hoa van phong",      bank_id,"627","112","APPROVED",manager_id,"2026-02-05 10:00:00",ketoan_id),
+            ("CO-2026-003","2026-02-28",120000000,"Luong",   "Tra luong thang 02-2026",         bank_id,"334","112","APPROVED",manager_id,"2026-02-28 15:00:00",ketoan_id),
+            ("CO-2026-004","2026-03-02",15000000, "Mua sam", "Mua thiet bi van phong moi",      bank_id,"641","112","APPROVED",manager_id,"2026-03-02 09:30:00",ketoan_id),
+            ("CO-2026-005","2026-03-10",5000000,  "Bao tri", "Sua chua may tinh nhan vien",     bank_id,"627","111","PENDING", None,     None,                  ketoan_id),
+            ("CO-2026-006","2026-03-15",120000000,"Luong",   "Tra luong thang 03-2026",         bank_id,"334","112","PENDING", None,     None,                  ketoan_id),
+            ("CO-2025-012","2025-12-31",120000000,"Luong",   "Tra luong thang 12-2025",         bank_id,"334","112","APPROVED",manager_id,"2025-12-31 15:00:00",ketoan_id),
+            ("CO-2025-011","2025-11-20",20000000, "Mua sam", "Mua phan mem ban quyen",          bank_id,"642","112","APPROVED",manager_id,"2025-11-20 11:00:00",ketoan_id),
         ]
         count = 0
         for txn_id, dt, amt, cat, desc, bid, dr, cr, status, appr_by, appr_at, cby in cash_out_rows:

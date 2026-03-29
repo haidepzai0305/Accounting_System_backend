@@ -21,7 +21,7 @@ class Payroll(db.Model):
     tax_rate = db.Column(db.Float, default=0.05)
     tax_amount = db.Column(db.BigInteger, default=0)
     deductions = db.Column(db.BigInteger, default=0)
-    status = db.Column(db.Enum(PayrollStatusEnum), default=PayrollStatusEnum.DRAFT)
+    status = db.Column(db.Enum(PayrollStatusEnum, values_callable=lambda e: [x.value for x in e]), default=PayrollStatusEnum.DRAFT)
     approved_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     approved_at = db.Column(db.DateTime)
     payment_date = db.Column(db.Date)

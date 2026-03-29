@@ -52,3 +52,50 @@ def create_cash_in():
         "status": "success",
         "journal_id": journal.journal_id
     })
+
+
+# =============================
+# LIST CASH IN
+# =============================
+@cash_in_bp.route("", methods=["GET"])
+@jwt_required()
+def get_cash_in_list():
+    try:
+        page = request.args.get("page", 1, type=int)
+        limit = request.args.get("limit", 20, type=int)
+        status = request.args.get("status")
+
+        query = CashInDetail.query
+
+        if status:
+            query = query.filter_by(
+                status=TransactionStatusEnum[status.upper()]
+            )
+
+        query = query.order_by(CashInDetail.created_at.desc())
+
+        pagination = query.paginate(
+            page=page,
+            per_page=limit
+        )
+
+        return jsonify({
+            "status": "success",
+            "data": {
+                "transactions": [
+                    t.to_dict() for t in pagination.items
+                ],
+                "pagination": {
+                    "page": page,
+                    "limit": limit,
+                    "total": pagination.total,
+                    "pages": pagination.pages
+                }
+            }
+        })
+
+    except Exception as e:
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
