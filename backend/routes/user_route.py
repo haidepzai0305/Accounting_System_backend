@@ -8,7 +8,9 @@ from backend.utils.permission import check_admin
 
 users_bp = Blueprint('users', __name__, url_prefix='/api/users')
 
-@users_bp.route('/', methods=['GET'])
+from backend.models import db
+
+@users_bp.route('', methods=['GET'])
 @jwt_required()
 def users_list():
 
@@ -31,7 +33,28 @@ def users_list():
         }
     })
 
-@users_bp.route('/', methods=['POST'])
+@users_bp.route('/stats', methods=['GET'])
+@jwt_required()
+def user_stats():
+    # Only allow admin
+    user_id = get_jwt_identity()
+    current_user = User.query.get(user_id)
+    if not check_admin(current_user):
+        return jsonify({"message": "Forbidden"}), 403
+
+    total_users = User.query.count()
+    active_roles = db.session.query(User.role).distinct().count()
+    
+    return jsonify({
+        "status": "success",
+        "data": {
+            "totalUsers": total_users,
+            "activeRoles": active_roles,
+            "pendingApprovals": 0
+        }
+    })
+
+@users_bp.route('', methods=['POST'])
 @jwt_required()
 def create():
 

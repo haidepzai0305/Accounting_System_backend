@@ -26,9 +26,18 @@ class Employee(db.Model):
         return {
             'id': self.id,
             'employee_id': self.employee_id,
+            'name': self.full_name,
             'full_name': self.full_name,
+            'fullName': self.full_name,
             'department': self.department,
             'position': self.position,
             'basic_salary': self.basic_salary,
-            'status': self.status
+            'status': self.status,
+            'created_at': self.created_at.isoformat() if self.created_at else None,
+            'createdAt': self.created_at.isoformat() if self.created_at else None,
+            'email': self.email,
+            'phone': self.phone,
+            'gender': self.gender,
+            'username': self.employee_id,
+            'role': 'viewer'
         }

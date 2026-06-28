@@ -27,12 +27,13 @@ def create_cash_out():
         user_id = get_jwt_identity()
         data = request.get_json()
 
-        required = ["date", "amount", "description", "account_debit", "account_credit"]
+        required = ["date", "amount", "description", "account_debit", "account_credit", "category"]
 
         if not all(field in data for field in required):
+            missing = [f for f in required if f not in data]
             return jsonify({
                 "status": "error",
-                "message": "Missing required fields"
+                "message": f"Thiếu các trường bắt buộc: {', '.join(missing)}"
             }), 400
 
         # validate accounts

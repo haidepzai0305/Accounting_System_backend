@@ -35,20 +35,21 @@ class Payroll(db.Model):
 
     @property
     def brutto_salary(self):
-        return self.basic_salary + self.allowance
+        return (self.basic_salary or 0) + (self.allowance or 0)
 
     @property
     def total_deductions(self):
-        return self.bhxh_amount + self.bhyt_amount + self.tax_amount + self.deductions
+        return (self.bhxh_amount or 0) + (self.bhyt_amount or 0) + \
+               (self.tax_amount or 0) + (self.deductions or 0)
 
     @property
     def netto_salary(self):
         return self.brutto_salary - self.total_deductions
 
     def calculate_payroll(self):
-        self.bhxh_amount = int(self.basic_salary * self.bhxh_rate)
-        self.bhyt_amount = int(self.basic_salary * self.bhyt_rate)
-        self.tax_amount = int(self.brutto_salary * self.tax_rate)
+        self.bhxh_amount = int((self.basic_salary or 0) * (self.bhxh_rate or 0.08))
+        self.bhyt_amount = int((self.basic_salary or 0) * (self.bhyt_rate or 0.015))
+        self.tax_amount = int(self.brutto_salary * (self.tax_rate or 0.05))
 
     def to_dict(self):
         return {

@@ -1,128 +1,228 @@
+from datetime import datetime
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required
+from backend.models import ChartOfAccounts, BankAccount, JournalEntry, db
+from backend.enums.AccountType import AccountTypeEnum
 
 account_bp = Blueprint('accounts', __name__, url_prefix='/api/accounts')
 
 @account_bp.route('', methods=['GET'])
 @jwt_required()
 def get_accounts():
-    # Mock accounts (Chart of Accounts)
+    """Fetch all accounts from the Chart of Accounts."""
+    accounts = ChartOfAccounts.query.filter_by(is_active=True).all()
+    
+    # If the database is empty, return initial mock structure so UI doesn't break
+    if not accounts:
+        return jsonify({
+            "debit": [],
+            "credit": []
+        })
+
     return jsonify({
-        "debit": [
-            {"code": "1111", "name": "Tiền mặt VND", "balance": 500000000},
-            {"code": "1121", "name": "Tiền gửi ngân hàng VND", "balance": 1500000000}
-        ],
-        "credit": [
-            {"code": "5111", "name": "Doanh thu bán hàng hóa", "balance": 0},
-            {"code": "6421", "name": "Chi phí tiền lương", "balance": 0}
-        ]
+        "debit": [a.to_dict() for a in accounts if a.type in [AccountTypeEnum.ASSET, AccountTypeEnum.EXPENSE]],
+        "credit": [a.to_dict() for a in accounts if a.type in [AccountTypeEnum.LIABILITY, AccountTypeEnum.EQUITY, AccountTypeEnum.REVENUE]]
     })
 
 @account_bp.route('/bank', methods=['GET'])
 @jwt_required()
 def get_bank_accounts():
+    """Fetch all active bank accounts."""
+    banks = BankAccount.query.filter_by(status='active').all()
     return jsonify([
-        {"value": "vcb", "label": "Vietcombank - 0011001234567"},
-        {"value": "tcb", "label": "Techcombank - 1903456789012"}
+        {"value": str(bank.id), "label": f"{bank.bank_name} - {bank.account_number}"}
+        for bank in banks
     ])
 
 @account_bp.route('/bank/details', methods=['GET'])
 @jwt_required()
 def get_bank_details():
+    """Fetch detailed bank account info and recent transactions."""
+    banks = BankAccount.query.all()
+    accounts_data = []
+    
+    # Predefined colors/icons for better UI
+    bank_styles = {
+        "Vietcombank": {"icon": "🏦", "color": "#2563eb"},
+        "Techcombank": {"icon": "🏛️", "color": "#10b981"},
+        "MB Bank": {"icon": "💳", "color": "#f97316"},
+        "TP Bank": {"icon": "📈", "color": "#8b5cf6"}
+    }
+
+    for bank in banks:
+        style = bank_styles.get(bank.bank_name, {"icon": "🏦", "color": "#6366f1"})
+        accounts_data.append({
+            "id": str(bank.id),
+            "name": bank.account_holder,
+            "bankName": bank.bank_name,
+            "accountNumber": f"****{bank.account_number[-4:]}",
+            "type": bank.account_type or "checking",
+            "balance": float(bank.balance),
+            "balanceChange": 0, # Could be calculated from transactions
+            "lastReconciled": bank.last_reconciled_at.strftime("%b %d, %Y") if bank.last_reconciled_at else "Never",
+            "daysSince": (datetime.utcnow() - bank.last_reconciled_at).days if bank.last_reconciled_at else 0,
+            "status": bank.status,
+            "apiConnection": "Active",
+            "icon": style["icon"],
+            "color": style["color"]
+        })
+
+    # For transactions, we can pull recent JournalEntries if they involve a bank account
+    # For now, let's just use the current bank journals link if we have them
+    transactions_data = {}
+    for bank in banks:
+        # Assuming we can find bank accounts in ChartOfAccounts by code or similar
+        # For a simple mock-to-real replacement, we'll try to find recent entries
+        # matching some logic, or just return empty for now if not linked
+        entries = JournalEntry.query.filter(
+            (JournalEntry.account_debit.like('112%')) | 
+            (JournalEntry.account_credit.like('112%'))
+        ).order_by(JournalEntry.date.desc()).limit(10).all()
+        
+        transactions_data[str(bank.id)] = [
+            {
+                "date": entry.date.strftime("%b %d, %Y"),
+                "description": entry.description,
+                "subDesc": entry.notes or "",
+                "category": "General", # Could be mapped from accounts
+                "refId": entry.journal_id,
+                "amount": float(entry.amount) if entry.account_debit.startswith('112') else -float(entry.amount),
+                "balance": 0, # Running balance would be more complex
+                "icon": "💳"
+            } for entry in entries
+        ]
+
     return jsonify({
-        "accounts": [
-            {
-                "id": "1", "name": "Chase Manhattan Business", "bankName": "JPMorgan Chase",
-                "accountNumber": "****4821", "type": "checking", "balance": 1240500.00, "balanceChange": 2.4,
-                "lastReconciled": "Oct 24, 2023", "daysSince": 12, "status": "active",
-                "apiConnection": "Chase Banking API v2.4", "icon": "🏦", "color": "#2563eb"
-            },
-            {
-                "id": "2", "name": "Wells Fargo Business Savings", "bankName": "Wells Fargo",
-                "accountNumber": "****3390", "type": "savings", "balance": 875200.50, "balanceChange": 1.8,
-                "lastReconciled": "Oct 20, 2023", "daysSince": 16, "status": "active",
-                "apiConnection": "Wells Fargo API v1.9", "icon": "🏛️", "color": "#10b981"
-            },
-            {
-                "id": "3", "name": "Citi Corporate Credit Line", "bankName": "Citibank",
-                "accountNumber": "****7714", "type": "credit", "balance": -45000.00, "balanceChange": -0.5,
-                "lastReconciled": "Oct 18, 2023", "daysSince": 18, "status": "active",
-                "apiConnection": "Citi API v3.1", "icon": "💳", "color": "#f97316"
-            },
-            {
-                "id": "4", "name": "Morgan Stanley Investment", "bankName": "Morgan Stanley",
-                "accountNumber": "****9902", "type": "investment", "balance": 2180000.00, "balanceChange": 5.2,
-                "lastReconciled": "Oct 15, 2023", "daysSince": 21, "status": "inactive",
-                "apiConnection": "Not connected", "icon": "📈", "color": "#8b5cf6"
-            }
-        ],
-        "transactions": {
-            "1": [
-                { "date": "Nov 05, 2023", "description": "Apple Store – Corporate Order", "subDesc": "Equipment Purchase", "category": "equipment", "refId": "TXN-992-084", "amount": -12450.00, "balance": 1240500.00, "icon": "🍎" },
-                { "date": "Nov 04, 2023", "description": "AWS Cloud Services Payment", "subDesc": "Monthly Infrastructure", "category": "software", "refId": "TXN-118-932", "amount": -4200.50, "balance": 1252950.00, "icon": "☁️" },
-                { "date": "Nov 02, 2023", "description": "Monthly Retainer – Client A", "subDesc": "Professional Services", "category": "income", "refId": "TXN-442-110", "amount": 45000.00, "balance": 1257150.50, "icon": "💼" },
-                { "date": "Oct 31, 2023", "description": "Office Lease Payment", "subDesc": "HQ Rent – Month 10", "category": "rent", "refId": "TXN-301-884", "amount": -15000.00, "balance": 1212150.50, "icon": "🏢" },
-                { "date": "Oct 29, 2023", "description": "Tax Consulting Fee", "subDesc": "Q3 Advisory Services", "category": "consulting", "refId": "TXN-881-289", "amount": -2500.00, "balance": 1227150.50, "icon": "📋" }
-            ]
-        }
+        "accounts": accounts_data,
+        "transactions": transactions_data
     })
 
 @account_bp.route('/chart', methods=['GET'])
 @jwt_required()
 def get_chart_of_accounts():
+    """Fetch the full hierarchy of Chart of Accounts."""
+    all_accounts = ChartOfAccounts.query.order_by(ChartOfAccounts.code).all()
+    
+    # Build a dictionary to easily find parents
+    accounts_by_code = {acc.code: acc.to_dict() for acc in all_accounts}
+    for code, data in accounts_by_code.items():
+        data['children'] = []
+        data['isGroup'] = False # Default
+
+    roots = []
+    for acc in all_accounts:
+        data = accounts_by_code[acc.code]
+        if acc.parent_account_code and acc.parent_account_code in accounts_by_code:
+            accounts_by_code[acc.parent_account_code]['children'].append(data)
+            accounts_by_code[acc.parent_account_code]['isGroup'] = True
+        else:
+            roots.append(data)
+
+    # Get recent transactions for each active account (top level or as needed)
+    transactions_data = {}
+    # Fetch some recent journal entries to populate graphs/lists
+    recent_entries = JournalEntry.query.order_by(JournalEntry.date.desc()).limit(50).all()
+    
+    for entry in recent_entries:
+        # Group by debit account
+        if entry.account_debit not in transactions_data:
+            transactions_data[entry.account_debit] = []
+        
+        transactions_data[entry.account_debit].append({
+            "date": entry.date.strftime("%b %d, %Y"),
+            "description": entry.description,
+            "subDesc": entry.notes or "",
+            "refId": entry.journal_id,
+            "debit": float(entry.amount),
+            "credit": None,
+            "balance": 0 # Would need to be historical
+        })
+
+        # Group by credit account
+        if entry.account_credit not in transactions_data:
+            transactions_data[entry.account_credit] = []
+            
+        transactions_data[entry.account_credit].append({
+            "date": entry.date.strftime("%b %d, %Y"),
+            "description": entry.description,
+            "subDesc": entry.notes or "",
+            "refId": entry.journal_id,
+            "debit": None,
+            "credit": float(entry.amount),
+            "balance": 0
+        })
+
     return jsonify({
-        "accounts": [
-            {
-                "code": '1000', "name": 'Assets', "description": 'Resources owned by the entity',
-                "type": 'GROUP', "balance": 4282900.50, "status": 'active', "isGroup": True, "category": 'assets',
-                "children": [
-                    { "code": '1010', "name": 'Operating Cash', "description": 'Main business checking account', "type": 'Liquid Assets', "balance": 142850.42, "status": 'active', "category": 'assets' },
-                    { "code": '1200', "name": 'Accounts Receivable', "description": 'Outstanding customer invoices', "type": 'Current Asset', "balance": 450200.00, "status": 'active', "category": 'assets' },
-                    { "code": '1500', "name": 'Fixed Assets', "description": 'Long-term tangible property', "type": 'Non-Current Asset', "balance": 3689850.08, "status": 'active', "category": 'assets' },
-                ],
-            },
-            {
-                "code": '2000', "name": 'Liabilities', "description": 'Obligations to external parties',
-                "type": 'GROUP', "balance": 1104220.00, "status": 'active', "isGroup": True, "category": 'liabilities',
-                "children": [
-                    { "code": '2100', "name": 'Accounts Payable', "description": 'Outstanding vendor invoices', "type": 'Current Liability', "balance": 254220.00, "status": 'active', "category": 'liabilities' },
-                    { "code": '2500', "name": 'Long-Term Debt', "description": 'Bank loans and bonds payable', "type": 'Non-Current Liability', "balance": 850000.00, "status": 'active', "category": 'liabilities' },
-                ],
-            },
-            {
-                "code": '3000', "name": 'Equity', "description": "Owner's stake in the company",
-                "type": 'GROUP', "balance": 3178680.50, "status": 'active', "isGroup": True, "category": 'equity',
-                "children": [
-                    { "code": '3100', "name": 'Common Stock', "description": 'Issued share capital', "type": 'Equity', "balance": 1000000.00, "status": 'active', "category": 'equity' },
-                    { "code": '3200', "name": 'Retained Earnings', "description": 'Cumulative undistributed profit', "type": 'Equity', "balance": 2178680.50, "status": 'active', "category": 'equity' },
-                ],
-            },
-            {
-                "code": '4000', "name": 'Revenue', "description": 'Income from business activities',
-                "type": 'GROUP', "balance": 2450000.00, "status": 'active', "isGroup": True, "category": 'revenue',
-                "children": [
-                    { "code": '4100', "name": 'Product Sales', "description": 'Revenue from core inventory sales', "type": 'Operating Income', "balance": 1890000.00, "status": 'active', "category": 'revenue' },
-                    { "code": '4200', "name": 'Consulting Fees', "description": 'Deprecated - Use Service Revenue instead', "type": 'Service Income', "balance": 0.00, "status": 'inactive', "category": 'revenue' },
-                    { "code": '4300', "name": 'Service Revenue', "description": 'Professional services rendered', "type": 'Service Income', "balance": 560000.00, "status": 'active', "category": 'revenue' },
-                ],
-            },
-            {
-                "code": '5000', "name": 'Expenses', "description": 'Costs incurred in operations',
-                "type": 'GROUP', "balance": 1608000.00, "status": 'active', "isGroup": True, "category": 'expense',
-                "children": [
-                    { "code": '5100', "name": 'Payroll Expense', "description": 'Employee salaries and wages', "type": 'Operating Expense', "balance": 982400.00, "status": 'active', "category": 'expense' },
-                    { "code": '5200', "name": 'Rent & Utilities', "description": 'Office space and energy costs', "type": 'Operating Expense', "balance": 312000.00, "status": 'active', "category": 'expense' },
-                    { "code": '5300', "name": 'Marketing', "description": 'Advertising and promotion', "type": 'Operating Expense', "balance": 313600.00, "status": 'active', "category": 'expense' },
-                ],
-            },
-        ],
-        "transactions": {
-            '1010': [
-                { "date": 'Oct 28, 2023', "description": 'Global Cloud Services – Subscription', "subDesc": 'Monthly infrastructure renewal', "refId": 'INV-88921', "debit": None, "credit": 1250.00, "balance": 142850.42 },
-                { "date": 'Oct 26, 2023', "description": 'Client Deposit – Horizon Corp', "subDesc": 'Project Milestone B-2', "refId": 'DEP-00421', "debit": 15000.00, "credit": None, "balance": 144100.42 },
-                { "date": 'Oct 24, 2023', "description": 'Payroll – Bi-Weekly Cycle', "subDesc": 'Executive & Administrative Staff', "refId": 'PAY-10029', "debit": None, "credit": 42300.00, "balance": 129100.42 },
-                { "date": 'Oct 21, 2023', "description": 'Office Lease – Metropol Tower', "subDesc": 'HQ Rent Payment (Month 10)', "refId": 'TXN-77210', "debit": None, "credit": 8500.00, "balance": 171400.42 },
-                { "date": 'Oct 19, 2023', "description": 'Wire Transfer Inbound', "subDesc": 'Stellar Partners Equity Div.', "refId": 'WIR-44021', "debit": 22450.00, "credit": None, "balance": 179900.42 },
-            ],
-        }
+        "accounts": roots,
+        "transactions": transactions_data
     })
+
+@account_bp.route('', methods=['POST'])
+@jwt_required()
+def create_account():
+    try:
+        data = request.get_json()
+        
+        # Image fields: Mã tài khoản, Tên tài khoản, Danh mục, Loại tài khoản, Diễn giải, Số dư đầu kỳ
+        # Mapping to model:
+        # - Mã tài khoản -> code
+        # - Tên tài khoản -> name
+        # - Danh mục -> type (Enum: asset, liability, etc.)
+        # - Loại tài khoản -> category (String)
+        # - Diễn giải -> description
+        # - Số dư đầu kỳ -> balance
+        
+        code = data.get('code')
+        name = data.get('name')
+        account_type_str = data.get('type') 
+        category = data.get('category')
+        description = data.get('description')
+        balance = data.get('balance', 0)
+        parent_code = data.get('parent_account_code')
+        
+        if not code or not name or not account_type_str:
+            return jsonify({"error": "Mã tài khoản, tên và danh mục là bắt buộc"}), 400
+        
+        # Check if code exists
+        if ChartOfAccounts.query.filter_by(code=code).first():
+            return jsonify({"error": f"Mã tài khoản '{code}' đã tồn tại"}), 400
+            
+        # Convert type to enum
+        try:
+            enum_type = AccountTypeEnum(account_type_str.lower())
+        except ValueError:
+            # Maybe it's sent in Vietnamese? 
+            # "Tài sản" -> asset, "Nợ phải trả" -> liability, "Vốn chủ sở hữu" -> equity, "Doanh thu" -> revenue, "Chi phí" -> expense
+            mapping = {
+                "tài sản": AccountTypeEnum.ASSET,
+                "nợ phải trả": AccountTypeEnum.LIABILITY,
+                "vốn chủ sở hữu": AccountTypeEnum.EQUITY,
+                "doanh thu": AccountTypeEnum.REVENUE,
+                "chi phí": AccountTypeEnum.EXPENSE
+            }
+            enum_type = mapping.get(account_type_str.lower())
+            if not enum_type:
+                return jsonify({"error": f"Danh mục '{account_type_str}' không hợp lệ"}), 400
+        
+        new_account = ChartOfAccounts(
+            code=code,
+            name=name,
+            type=enum_type,
+            category=category,
+            description=description,
+            balance=balance,
+            parent_account_code=parent_code
+        )
+        
+        db.session.add(new_account)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Tạo tài khoản thành công!",
+            "account": new_account.to_dict()
+        }), 201
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
+

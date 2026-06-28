@@ -33,19 +33,56 @@ def get_payroll_employees():
 @payroll_bp.route('/calculate', methods=['POST'])
 @jwt_required()
 def calculate_payroll():
-    data = request.get_json()
-    month = data.get('month')
-    year = data.get('year')
-    user_id = get_jwt_identity()
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"status": "error", "message": "Yêu cầu không hợp lệ (Missing Body)"}), 400
+            
+        month = data.get('month')
+        year = data.get('year')
+        user_id = get_jwt_identity()
 
-    if not month or not year:
-        return jsonify({"error": "Vui lòng cung cấp tháng và năm"}), 400
+        if not month or not year:
+            return jsonify({"status": "error", "message": "Vui lòng cung cấp tháng và năm"}), 400
 
-    result = payroll_service.calculate_payroll_for_month(month, year, created_by=user_id)
-    return jsonify(result)
+        result = payroll_service.calculate_payroll_for_month(month, year, created_by=user_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        from backend.extension import db
+        db.session.rollback()
+        return jsonify({
+            "status": "error", 
+            "message": f"Lỗi hệ thống: {str(e)}"
+        }), 500
 
 
-@payroll_bp.route('/', methods=['POST'])
+@payroll_bp.route('/calculate-single', methods=['POST'])
+@jwt_required()
+def calculate_single():
+    try:
+        data = request.get_json()
+        employee_id = data.get('employee_id')
+        month = data.get('month')
+        year = data.get('year')
+        user_id = get_jwt_identity()
+
+        if not employee_id or not month or not year:
+            return jsonify({"status": "error", "message": "Thiếu employee_id, tháng hoặc năm"}), 400
+
+        result = payroll_service.calculate_payroll_for_one(employee_id, month, year, created_by=user_id)
+        return jsonify({
+            "status": "success",
+            "message": "Đã tính lương và lưu kết quả!",
+            "data": result.to_dict()
+        })
+    except Exception as e:
+        from backend.extension import db
+        db.session.rollback()
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@payroll_bp.route('', methods=['POST'])
 @jwt_required()
 def create_payroll():
     data = request.get_json()

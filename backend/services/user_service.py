@@ -6,7 +6,7 @@ from backend.models import User,db
 
 def get_users(page, limit, status=None, role=None):
 
-    query = User.query.filter(User.deleted_at is None)
+    query = User.query.filter(User.deleted_at.is_(None))
 
     if status:
         query = query.filter_by(status=status)

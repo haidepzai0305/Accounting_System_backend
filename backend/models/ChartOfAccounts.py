@@ -10,7 +10,7 @@ class ChartOfAccounts(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(20), unique=True, nullable=False)
     name = db.Column(db.String(100), nullable=False)
-    type = db.Column(db.Enum(AccountTypeEnum), nullable=False)
+    type = db.Column(db.Enum(AccountTypeEnum, values_callable=lambda e: [x.value for x in e]), nullable=False)
     category = db.Column(db.String(50))
     description = db.Column(db.Text)
     balance = db.Column(db.BigInteger, default=0)
@@ -27,5 +27,7 @@ class ChartOfAccounts(db.Model):
             'type': self.type.value,
             'category': self.category,
             'balance': self.balance,
-            'is_active': self.is_active
-        }
+            'is_active': self.is_active,
+            'description': self.description,
+            'parent_account_code': self.parent_account_code
+        }

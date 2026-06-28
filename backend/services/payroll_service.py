@@ -32,37 +32,58 @@ def get_payroll_stats(month=None, year=None):
 
 
 def get_payroll_employees(month=None, year=None, page=1, limit=20):
-    """Lấy danh sách bảng lương nhân viên với phân trang."""
-    query = Payroll.query.join(Employee, Payroll.employee_id == Employee.id)
-
-    if month:
-        query = query.filter(Payroll.month == month)
-    if year:
-        query = query.filter(Payroll.year == year)
-
+    """Lấy danh sách TOÀN BỘ nhân viên active và thông tin lương tháng (nếu có)."""
+    # 1. Lấy danh sách nhân viên đang hoạt động làm gốc
+    query = Employee.query.filter_by(status='active')
+    
     total = query.count()
-    payrolls = query.order_by(Payroll.created_at.desc()) \
+    employees = query.order_by(Employee.employee_id.asc()) \
         .offset((page - 1) * limit).limit(limit).all()
 
     result = []
-    for p in payrolls:
-        employee = Employee.query.get(p.employee_id)
+    for emp in employees:
+        # 2. Tìm bản ghi lương cho tháng/năm này
+        p = Payroll.query.filter_by(
+            employee_id=emp.id, 
+            month=month, 
+            year=year
+        ).first()
+        
+        # Mapping trạng thái sang tiếng Việt cho UI
         status_map = {
             PayrollStatusEnum.DRAFT: "Chờ duyệt",
             PayrollStatusEnum.CALCULATED: "Đã tính",
             PayrollStatusEnum.APPROVED: "Phê duyệt",
             PayrollStatusEnum.PAID: "Đã thanh toán"
         }
-        result.append({
-            "id": p.payroll_id,
-            "name": employee.full_name if employee else "N/A",
-            "code": employee.employee_id if employee else "N/A",
-            "department": employee.department if employee else "N/A",
-            "bhxh": f"{p.bhxh_amount:,}",
-            "bhyt": f"{p.bhyt_amount:,}",
-            "netSalary": f"{p.netto_salary:,}",
-            "status": status_map.get(p.status, p.status.value)
-        })
+
+        if p:
+            result.append({
+                "id": p.payroll_id,
+                "name": emp.full_name,
+                "code": emp.employee_id,
+                "department": emp.department,
+                "basicSalary": f"{p.basic_salary:,}",
+                "allowance": f"{p.allowance:,}",
+                "bhxh": f"{p.bhxh_amount:,}",
+                "bhyt": f"{p.bhyt_amount:,}",
+                "netSalary": f"{p.netto_salary:,}",
+                "status": status_map.get(p.status, p.status.value)
+            })
+        else:
+            # Nếu chưa có bản ghi lương cho tháng này
+            result.append({
+                "id": f"NEW-{emp.employee_id}", 
+                "name": emp.full_name,
+                "code": emp.employee_id,
+                "department": emp.department,
+                "basicSalary": f"{emp.basic_salary:,}",
+                "allowance": "0",
+                "bhxh": "0",
+                "bhyt": "0",
+                "netSalary": "0",
+                "status": "Chưa tính"
+            })
 
     return result, total
 
@@ -125,42 +146,56 @@ def calculate_payroll_for_month(month, year, created_by):
 
     count = 0
     for emp in employees:
-        # Kiểm tra đã có bảng lương cho tháng này chưa
-        existing = Payroll.query.filter_by(
-            employee_id=emp.id,
-            month=month,
-            year=year
-        ).first()
-
-        if existing:
-            # Cập nhật lại nếu đã tồn tại
-            existing.basic_salary = emp.basic_salary
-            existing.calculate_payroll()
-            existing.status = PayrollStatusEnum.CALCULATED
-            existing.updated_at = datetime.utcnow()
-        else:
-            # Tạo mới bảng lương
-            payroll = Payroll(
-                payroll_id=generate_id("PAY"),
-                month=month,
-                year=year,
-                employee_id=emp.id,
-                basic_salary=emp.basic_salary,
-                allowance=0,
-                created_by=created_by
-            )
-            payroll.calculate_payroll()
-            payroll.status = PayrollStatusEnum.CALCULATED
-            db.session.add(payroll)
-
+        calculate_payroll_for_one(emp.id, month, year, created_by)
         count += 1
-
-    db.session.commit()
 
     return {
         "message": f"Đã tính lương cho tháng {month}/{year}",
         "count": count
     }
+
+
+def calculate_payroll_for_one(employee_id, month, year, created_by):
+    """Tính lương cho 1 nhân viên cụ thể trong tháng và lưu/cập nhật kết quả."""
+    emp = Employee.query.get(employee_id)
+    if not emp:
+        # Nếu truyền vào employee_id là dạng string (EMP001), hãy thử tìm theo code
+        emp = Employee.query.filter_by(employee_id=employee_id).first()
+        
+    if not emp:
+        raise ValueError("Nhân viên không tồn tại")
+
+    # Kiểm tra/Truy tìm bản ghi lương cũ
+    existing = Payroll.query.filter_by(
+        employee_id=emp.id,
+        month=month,
+        year=year
+    ).first()
+
+    if existing:
+        # Cập nhật lương cơ bản mới nhất từ hồ sơ
+        existing.basic_salary = emp.basic_salary
+        existing.calculate_payroll()
+        existing.status = PayrollStatusEnum.CALCULATED
+        existing.updated_at = datetime.utcnow()
+        db.session.commit()
+        return existing
+    else:
+        # Tạo mới
+        payroll = Payroll(
+            payroll_id=generate_id("PAY"),
+            month=month,
+            year=year,
+            employee_id=emp.id,
+            basic_salary=emp.basic_salary,
+            allowance=0,
+            created_by=created_by
+        )
+        payroll.calculate_payroll()
+        payroll.status = PayrollStatusEnum.CALCULATED
+        db.session.add(payroll)
+        db.session.commit()
+        return payroll
 
 
 def create_payroll(data, created_by):
@@ -184,7 +219,7 @@ def create_payroll(data, created_by):
         month=data['month'],
         year=data['year'],
         employee_id=data['employee_id'],
-        basic_salary=data.get('basic_salary', employee.basic_salary),
+        basic_salary=employee.basic_salary,
         allowance=data.get('allowance', 0),
         bhxh_rate=data.get('bhxh_rate', 0.08),
         bhyt_rate=data.get('bhyt_rate', 0.015),

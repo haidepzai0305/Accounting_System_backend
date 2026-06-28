@@ -438,6 +438,16 @@ def run_seed():
             ("FILE-008", "hop_dong_mua_sam_CO2026004.pdf","pdf",327680,"uploads/2026/03/CO-2026-004/hop_dong.pdf",      "CI-2026-001", "cash_out_detail", "CO-2026-004", ketoan_id),
             ("FILE-009", "bao_cao_CF_T01_2026.pdf",   "pdf",  512000, "uploads/reports/RPT-2026-01-CF.pdf",            None,          "reports",         "RPT-2026-01-CF", admin_id),
             ("FILE-010", "bao_cao_luong_Q4_2025.pdf", "pdf",  450560, "uploads/reports/RPT-2025-Q4-PL.pdf",            None,          "reports",         "RPT-2025-Q4-PL", admin_id),
+            ("FILE-011", "phieu_thu_CI2026004.pdf",    "pdf",  312000, "uploads/2026/02/CI-2026-004/phieu_thu.pdf",     "CI-2026-004", "cash_in_detail",  "CI-2026-004", ketoan_id),
+            ("FILE-012", "giay_de_nghi_CO2026005.docx","docx", 54000, "uploads/2026/03/CO-2026-005/de_nghi.docx",       None,          "cash_out_detail", "CO-2026-005", ketoan_id),
+            ("FILE-013", "chung_tu_gan_kem_01.jpg",    "jpg",  120500, "uploads/misc/attachments/img_01.jpg",           None,          "cash_in_detail",  "CI-2026-006", ketoan_id),
+            ("FILE-014", "bang_ke_chi_phi_T2.pdf",     "pdf",  412000, "uploads/reports/expense_summary_feb.pdf",       None,          "reports",         "RPT-2026-02-CF", ketoan_id),
+            ("FILE-015", "hop_dong_lao_dong_NV01.pdf", "pdf",  890000, "uploads/hr/contracts/EMP001.pdf",               None,          "employees",       "EMP001",      admin_id),
+            ("FILE-016", "anh_the_NV01.png",           "png",   65000, "uploads/hr/photos/EMP001.png",                  None,          "employees",       "EMP001",      admin_id),
+            ("FILE-017", "giay_kham_suc_khoe_NV02.pdf", "pdf",  560000, "uploads/hr/health/EMP002.pdf",                  None,          "employees",       "EMP002",      admin_id),
+            ("FILE-018", "bien_lai_tien_dien_T1.jpg",  "jpg",  145000, "uploads/utilities/electricity_jan.jpg",        None,          "cash_out_detail", "CO-2026-002", ketoan_id),
+            ("FILE-019", "hoa_don_internet.pdf",       "pdf",  210000, "uploads/utilities/internet_invoice.pdf",       None,          "cash_out_detail", "CO-2026-002", ketoan_id),
+            ("FILE-020", "bao_cao_thue_Q1_2026.xlsx",  "xlsx", 125000, "uploads/tax/VAT_Q1_2026.xlsx",                None,          "reports",         "RPT-2026-Q1-PL", admin_id),
         ]
         count = 0
         for fid, orig_name, ftype, fsize, s3key, tid, rel_tbl, rel_id, uploader in attachment_rows:

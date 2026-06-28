@@ -20,10 +20,27 @@ class Attachment(db.Model):
     deleted_at = db.Column(db.DateTime)
 
     def to_dict(self):
+        # Optional: try to fetch the user's name
+        from backend.models.User import User
+        uploader = User.query.get(self.uploaded_by)
+        uploader_name = uploader.full_name if uploader else "Unknown"
+
         return {
             'id': self.id,
-            'file_id': self.file_id,
+            'fileId': self.file_id,
+            'fileName': self.original_filename,
+            'name': self.original_filename,  # alias
             'original_filename': self.original_filename,
-            'file_type': self.file_type,
-            'file_size': self.file_size
+            'fileType': self.file_type,
+            'fileSize': f"{self.file_size / 1024:.2f} KB",
+            'size': f"{self.file_size / 1024:.2f} KB",  # alias
+            's3Key': self.s3_key,
+            'relatedTable': self.related_table,
+            'relatedId': self.related_id,
+            'relatedRecord': f"{self.related_table}: {self.related_id}", # alias
+            'uploadedBy': self.uploaded_by,
+            'uploadedByName': uploader_name, # alias
+            'uploadedAt': self.uploaded_at.isoformat() if self.uploaded_at else None,
+            'date': self.uploaded_at.strftime('%Y-%m-%d') if self.uploaded_at else None, # alias
+            'status': 'available' # default status
         }

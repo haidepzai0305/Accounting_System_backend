@@ -1,3 +1,5 @@
+import os
+
 from flask import Flask
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
@@ -13,6 +15,7 @@ from backend.routes.dashboard_routes import dashboard_bp
 from backend.routes.payroll_routes import payroll_bp
 from backend.routes.report_routes import report_bp
 from backend.routes.account_routes import account_bp
+from backend.routes.journal_routes import journal_bp
 
 from backend.models import db
 
@@ -24,6 +27,7 @@ def create_app():
     app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:password@localhost:3306/finance_management"
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['JWT_SECRET_KEY'] = "*-EI>6!Bl67#0>_N,{S_>{Y=LRl[#1}x?DXT%+}HUnT"
+    app.url_map.strict_slashes = False
     db.init_app(app)
     JWTManager(app)
     CORS(app)
@@ -40,7 +44,13 @@ def create_app():
     app.register_blueprint(payroll_bp)
     app.register_blueprint(report_bp)
     app.register_blueprint(account_bp)
-
+    app.register_blueprint(journal_bp)
+    
+    from backend.routes.staff_routes import staff_bp
+    app.register_blueprint(staff_bp)
+    
+    from backend.routes.attachment_routes import attachment_bp
+    app.register_blueprint(attachment_bp)
 
     @app.route("/")
     def home():
